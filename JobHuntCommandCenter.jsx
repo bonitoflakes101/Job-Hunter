@@ -1827,6 +1827,22 @@ export default function App() {
       setJobs(loadedJobs)
       setSettings({ ...DEFAULT_SETTINGS, ...loadedSettings })
       setStorageReady(true)
+
+      // Bookmarklet prefill — auto-open Add Job modal with extracted data
+      const params = new URLSearchParams(window.location.search)
+      if (params.get('addJob') === '1') {
+        window.history.replaceState({}, '', window.location.pathname)
+        const source = params.get('source') || 'Other'
+        setSelectedJob({
+          ...DEFAULT_JOB,
+          status: 'saved',
+          company: params.get('company') || '',
+          role: params.get('role') || '',
+          url: params.get('url') || '',
+          source: SOURCES.includes(source) ? source : 'Other',
+        })
+        setModalMode('add')
+      }
     }
     init()
   }, [])
@@ -1880,7 +1896,7 @@ export default function App() {
 
   // ── Modal helpers ──────────────────────────────────────────────────────────
   const openModal = useCallback((job, mode = 'view') => { setSelectedJob(job); setModalMode(mode) }, [])
-  const openAddModal = useCallback((status = 'saved') => { setSelectedJob({ ...DEFAULT_JOB, status }); setModalMode('add') }, [])
+  const openAddModal = useCallback((status = 'saved', prefill = {}) => { setSelectedJob({ ...DEFAULT_JOB, status, ...prefill }); setModalMode('add') }, [])
   const closeModal = useCallback(() => setSelectedJob(null), [])
 
   // ── Drag and drop ──────────────────────────────────────────────────────────

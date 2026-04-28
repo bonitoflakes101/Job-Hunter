@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>JHCC Bookmarklet Installer</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #080C14;
+      color: #E8EDF5;
+      font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 32px;
+    }
+    .card {
+      background: #0F1523;
+      border: 1px solid #1E2D4A;
+      border-radius: 14px;
+      padding: 36px 40px;
+      max-width: 560px;
+      width: 100%;
+    }
+    h1 {
+      font-size: 20px;
+      font-weight: 700;
+      color: #E8EDF5;
+      margin-bottom: 6px;
+      letter-spacing: -0.02em;
+    }
+    .sub {
+      font-size: 13px;
+      color: #7A8FA6;
+      margin-bottom: 32px;
+      line-height: 1.5;
+    }
+
+    /* The draggable bookmarklet button */
+    #bookmarklet {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 22px;
+      background: #003D5C;
+      color: #00C8FF;
+      border: 2px dashed #00C8FF;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: grab;
+      text-decoration: none;
+      user-select: none;
+      transition: background 0.15s;
+      margin-bottom: 20px;
+    }
+    #bookmarklet:hover { background: #005580; }
+    #bookmarklet::before { content: '⭐'; font-size: 16px; }
+
+    .steps {
+      list-style: none;
+      counter-reset: steps;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      margin-top: 28px;
+    }
+    .steps li {
+      counter-increment: steps;
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+      font-size: 13px;
+      color: #7A8FA6;
+      line-height: 1.5;
+    }
+    .steps li::before {
+      content: counter(steps);
+      min-width: 22px;
+      height: 22px;
+      background: #16203A;
+      border: 1px solid #1E2D4A;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 700;
+      color: #00C8FF;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+    .steps li span { color: #E8EDF5; }
+
+    .sites {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 24px;
+    }
+    .site-pill {
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+      background: #16203A;
+      color: #7A8FA6;
+      border: 1px solid #1E2D4A;
+    }
+    .site-pill.supported { background: #052E1E; color: #10B981; border-color: #10B98144; }
+
+    .divider { height: 1px; background: #1E2D4A; margin: 28px 0; }
+    .note { font-size: 12px; color: #3D5270; line-height: 1.6; }
+    .note strong { color: #7A8FA6; }
+  </style>
+</head>
+<body>
+<div class="card">
+  <h1>Track Job — Bookmarklet</h1>
+  <p class="sub">One click on any job page → Add Job modal opens in your JHCC dashboard with the details pre-filled.</p>
+
+  <a id="bookmarklet" href="">Track This Job</a>
+
+  <p style="font-size:12px;color:#3D5270;margin-bottom:0">← Drag this button to your bookmarks bar</p>
+
+  <ol class="steps">
+    <li>Show your bookmarks bar: <span>View → Show Bookmarks Bar (⌘⇧B)</span></li>
+    <li>Drag the button above into the bookmarks bar</li>
+    <li>Make sure JHCC is running: <span>npm run dev</span> → open <span>localhost:5173</span></li>
+    <li>Go to any job listing page and click <span>Track This Job</span> in your bookmarks bar</li>
+  </ol>
+
+  <div class="divider"></div>
+
+  <p style="font-size:11px;color:#7A8FA6;text-transform:uppercase;letter-spacing:0.06em;font-weight:600;margin-bottom:12px">Supported Sites</p>
+  <div class="sites">
+    <span class="site-pill supported">LinkedIn</span>
+    <span class="site-pill supported">JobStreet</span>
+    <span class="site-pill supported">Indeed</span>
+    <span class="site-pill supported">AWS Jobs</span>
+    <span class="site-pill">Any site (fallback)</span>
+  </div>
+
+  <div class="divider"></div>
+
+  <p class="note">
+    <strong>What it extracts:</strong> job title, company name, page URL, and source site.<br>
+    <strong>What it does not do:</strong> submit anything, read passwords, or access any data outside the job listing.<br>
+    <strong>Requires:</strong> JHCC running at localhost:5173.
+  </p>
+</div>
+
+<script>
+  // Build the bookmarklet href
+  const code = `(function(){
+    var h=location.hostname,href=location.href,title=document.title;
+    var role='',company='',source='Other';
+    function q(sels){for(var i=0;i<sels.length;i++){var el=document.querySelector(sels[i]);if(el&&el.innerText.trim())return el.innerText.trim();}return '';}
+    if(h.includes('linkedin.com')){
+      source='LinkedIn';
+      role=q(['h1.top-card-layout__title','h1.job-details-jobs-unified-top-card__job-title','h1[class*="job-title"]','h1']);
+      company=q(['a.topcard__org-name-link','.job-details-jobs-unified-top-card__company-name a','[class*="company-name"] a','[class*="company-name"]']);
+    } else if(h.includes('jobstreet.com')){
+      source='JobStreet';
+      role=q(['[data-automation="job-detail-title"]','h1[class*="Title"]','h1']);
+      company=q(['[data-automation="advertiser-name"]','[class*="CompanyName"]','[class*="company"]']);
+    } else if(h.includes('indeed.com')){
+      source='Other';
+      role=q(['h1.jobsearch-JobInfoHeader-title','h1[class*="title"]','h1']);
+      company=q(['[data-company-name]','[class*="CompanyInfoContainer"] a','[class*="company"] a','[class*="company"]']);
+    } else if(h.includes('amazon.jobs')||h.includes('aws.amazon.com')){
+      source='AWS Partner Network';
+      role=q(['h1.job-title','h1[class*="title"]','h1']);
+      company='Amazon';
+    }
+    if(!role){var pts=title.split(/\\s[-–|]\\s/);role=(pts[0]||title).trim();company=company||(pts[1]||'').trim();}
+    var p=new URLSearchParams({addJob:1,company:company,role:role,url:href,source:source});
+    window.open('http://localhost:5173/?'+p.toString(),'_blank');
+  })();`
+
+  document.getElementById('bookmarklet').href = 'javascript:' + encodeURIComponent(code)
+</script>
+</body>
+</html>

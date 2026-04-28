@@ -1,0 +1,23 @@
+{
+  "name": "job-hunt-command-center",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "lucide-react": "^0.468.0",
+    "recharts": "^2.13.3",
+    "@fontsource/space-grotesk": "^5.1.0",
+    "@fontsource/dm-sans": "^5.1.0",
+    "@fontsource/jetbrains-mono": "^5.1.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "vite": "^6.0.5"
+  }
+}
