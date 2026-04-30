@@ -59,6 +59,20 @@
     #bookmarklet:hover { background: #005580; }
     #bookmarklet::before { content: '⭐'; font-size: 16px; }
 
+    /* Two-option popup styles (shown at runtime on job pages) */
+    .jhcc-popup {
+      position: fixed; bottom: 80px; right: 24px; z-index: 2147483647;
+      background: #003D5C; border: 2px solid #00C8FF; border-radius: 12px;
+      padding: 8px; display: flex; flex-direction: column; gap: 6px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.6); font-family: -apple-system, sans-serif;
+    }
+    .jhcc-popup button {
+      padding: 10px 18px; border-radius: 8px; border: 1px solid #00C8FF44;
+      background: transparent; color: #00C8FF; font-size: 13px; font-weight: 600;
+      cursor: pointer; text-align: left; transition: background 0.15s;
+    }
+    .jhcc-popup button:hover { background: #005580; }
+
     .steps {
       list-style: none;
       counter-reset: steps;
@@ -160,24 +174,59 @@
     function q(sels){for(var i=0;i<sels.length;i++){var el=document.querySelector(sels[i]);if(el&&el.innerText.trim())return el.innerText.trim();}return '';}
     if(h.includes('linkedin.com')){
       source='LinkedIn';
-      role=q(['h1.top-card-layout__title','h1.job-details-jobs-unified-top-card__job-title','h1[class*="job-title"]','h1']);
-      company=q(['a.topcard__org-name-link','.job-details-jobs-unified-top-card__company-name a','[class*="company-name"] a','[class*="company-name"]']);
+      role=q(['[data-test-job-detail-title]','.job-details-jobs-unified-top-card__job-title h1','.jobs-unified-top-card__job-title h1','h1.t-24','h1[class*="title"]']);
+      company=q(['.job-details-jobs-unified-top-card__company-name a','.jobs-unified-top-card__company-name a','.jobs-unified-top-card__subtitle-primary-grouping a','a[href*="/company/"]']);
+      var jl=document.querySelector('a[href*="/jobs/view/"]');
+      if(jl){if(!role)role=jl.innerText.trim();href=jl.href.split('?')[0];}
+      if(!role||!company){
+        var tm=document.title.match(/^(.+?)\s+(?:hiring\s+)?at\s+(.+?)\s*[|—]/);
+        if(tm){if(!role)role=tm[1].trim();if(!company)company=tm[2].trim();}
+      }
+      if(href===location.href){var m=location.search.match(/currentJobId=(\d+)/);if(m)href='https://www.linkedin.com/jobs/view/'+m[1]+'/';}
     } else if(h.includes('jobstreet.com')){
       source='JobStreet';
       role=q(['[data-automation="job-detail-title"]','h1[class*="Title"]','h1']);
       company=q(['[data-automation="advertiser-name"]','[class*="CompanyName"]','[class*="company"]']);
     } else if(h.includes('indeed.com')){
-      source='Other';
-      role=q(['h1.jobsearch-JobInfoHeader-title','h1[class*="title"]','h1']);
-      company=q(['[data-company-name]','[class*="CompanyInfoContainer"] a','[class*="company"] a','[class*="company"]']);
+      source='Indeed';
+      role=q(['[data-testid="jobsearch-JobInfoHeader-title"]','[data-testid="job-title"] span','h1.jobTitle','h2.jobTitle a span','h1[class*="title"]','h1']);
+      company=q(['[data-testid="inlineHeader-companyName"] a','[data-testid="inlineHeader-companyName"]','[data-testid="companyName"]','[data-company-name]','span.companyName','[class*="companyName"] a','[class*="companyName"]','[class*="company"] a']);
     } else if(h.includes('amazon.jobs')||h.includes('aws.amazon.com')){
       source='AWS Partner Network';
       role=q(['h1.job-title','h1[class*="title"]','h1']);
       company='Amazon';
     }
     if(!role){var pts=title.split(/\\s[-–|]\\s/);role=(pts[0]||title).trim();company=company||(pts[1]||'').trim();}
-    var p=new URLSearchParams({addJob:1,company:company,role:role,url:href,source:source});
-    window.open('http://localhost:5173/?'+p.toString(),'_blank');
+
+    var old=document.getElementById('jhcc-popup');if(old)old.remove();
+    var popup=document.createElement('div');
+    popup.id='jhcc-popup';
+    popup.style.cssText='position:fixed;bottom:80px;right:24px;z-index:2147483647;background:#003D5C;border:2px solid #00C8FF;border-radius:12px;padding:8px;display:flex;flex-direction:column;gap:6px;box-shadow:0 8px 24px rgba(0,0,0,0.6);font-family:-apple-system,sans-serif;';
+    function makeBtn(label,sub){
+      var b=document.createElement('button');
+      b.style.cssText='padding:10px 18px;border-radius:8px;border:1px solid rgba(0,200,255,0.27);background:transparent;color:#00C8FF;font-size:13px;font-weight:600;cursor:pointer;text-align:left;width:100%;';
+      b.innerHTML='<span style="display:block">'+label+'</span><span style="display:block;font-size:11px;font-weight:400;opacity:0.7;margin-top:2px">'+sub+'</span>';
+      b.onmouseenter=function(){b.style.background='#005580';};
+      b.onmouseleave=function(){b.style.background='transparent';};
+      return b;
+    }
+    var qa=makeBtn('⚡ Quick Add','Silently save — no modal');
+    var ae=makeBtn('✏️ Add & Edit','Open JHCC to review');
+    qa.onclick=function(){
+      popup.remove();
+      var p=new URLSearchParams({quickAdd:1,company:company,role:role,url:href,source:source});
+      window.open('http://localhost:5173/#'+p.toString(),'_blank');
+    };
+    ae.onclick=function(){
+      popup.remove();
+      var p=new URLSearchParams({addJob:1,company:company,role:role,url:href,source:source});
+      window.open('http://localhost:5173/#'+p.toString(),'_blank');
+    };
+    popup.appendChild(qa);popup.appendChild(ae);
+    document.body.appendChild(popup);
+    setTimeout(function(){
+      document.addEventListener('click',function h(e){if(!popup.contains(e.target)){popup.remove();document.removeEventListener('click',h);}},true);
+    },0);
   })();`
 
   document.getElementById('bookmarklet').href = 'javascript:' + encodeURIComponent(code)

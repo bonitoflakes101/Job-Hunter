@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html>
+<script>
+  var p = new URLSearchParams(location.search);
+  if (p.get('quickAdd') === '1') {
+    try {
+      var q = JSON.parse(localStorage.getItem('jhcc-quick-add-queue') || '[]');
+      q.push({ company: p.get('company') || '', role: p.get('role') || '', url: p.get('url') || '', source: p.get('source') || 'Other' });
+      localStorage.setItem('jhcc-quick-add-queue', JSON.stringify(q));
+    } catch(e) { console.error('[jhcc quick-add]', e); }
+  }
+  window.close();
+</script>
+</html>

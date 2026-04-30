@@ -1,4 +1,4 @@
-# Job Hunt Command Center — Build Roadmap
+# Job Hunt Command Center — Build RNoadmap
 
 > Status tracker for the full build. Check off tasks as you go. Every task maps to a section in `MASTER.md`.
 
@@ -57,21 +57,21 @@ These architectural choices are final. Do not re-open them during the build.
 ### Phase 2 — Core Views: Navigation + Kanban + Table
 *Overall complexity: High*
 
-- [x] **[P2-1]** Implement `Sidebar` with `NavItem`, view switching, collapse/expand toggle — *Medium*
-- [x] **[P2-2]** Implement `StatusBadge` and `SourceBadge` atoms with correct colors per MASTER.md §8 — *Low*
-- [x] **[P2-3]** Implement `TagPill` atom (display + optional remove button) — *Low*
-- [x] **[P2-4]** Implement `TagInput` atom (type + Enter to add pill) — *Low*
-- [x] **[P2-5]** Implement `JobCard` for Kanban (company, role, source badge, days indicator, AI dot) — *Low*
-- [x] **[P2-6]** Implement `KanbanColumn` (header with count badge + accent border, card list, empty ghost card) — *Medium*
-- [x] **[P2-7]** Implement `KanbanView` horizontal scroll container with all 7 columns — *Low*
-- [x] **[P2-8]** Implement drag-and-drop via pointer events (pointerDown/Move/Up), ghost card, drop zone highlight — *High*
-- [x] **[P2-9]** Implement `ContactRow` atom with all contact fields — *Low*
-- [x] **[P2-10]** Implement `JobForm` with all fields, TagInput, ContactRow list — *Medium*
-- [x] **[P2-11]** Implement `JobModal` with view/edit/add modes, unsaved-changes guard (no window.confirm) — *High*
-- [x] **[P2-12]** Wire modal open from JobCard click + "Add" button, correct modalMode per context — *Low*
-- [x] **[P2-13]** Implement `TableFilters` (search with 150ms debounce + status/source multi-select + date range) — *Medium*
-- [x] **[P2-14]** Implement `TableView` with useMemo filtering+sorting, sortable headers, `TableRow` — *Medium*
-- [x] **[P2-15]** Implement `EmptyState` component — *Low*
+- [ ] **[P2-1]** Implement `Sidebar` with `NavItem`, view switching, collapse/expand toggle — *Medium*
+- [ ] **[P2-2]** Implement `StatusBadge` and `SourceBadge` atoms with correct colors per MASTER.md §8 — *Low*
+- [ ] **[P2-3]** Implement `TagPill` atom (display + optional remove button) — *Low*
+- [ ] **[P2-4]** Implement `TagInput` atom (type + Enter to add pill) — *Low*
+- [ ] **[P2-5]** Implement `JobCard` for Kanban (company, role, source badge, days indicator, AI dot) — *Low*
+- [ ] **[P2-6]** Implement `KanbanColumn` (header with count badge + accent border, card list, empty ghost card) — *Medium*
+- [ ] **[P2-7]** Implement `KanbanView` horizontal scroll container with all 7 columns — *Low*
+- [ ] **[P2-8]** Implement drag-and-drop via pointer events (pointerDown/Move/Up), ghost card, drop zone highlight — *High*
+- [ ] **[P2-9]** Implement `ContactRow` atom with all contact fields — *Low*
+- [ ] **[P2-10]** Implement `JobForm` with all fields, TagInput, ContactRow list — *Medium*
+- [ ] **[P2-11]** Implement `JobModal` with view/edit/add modes, unsaved-changes guard (no window.confirm) — *High*
+- [ ] **[P2-12]** Wire modal open from JobCard click + "Add" button, correct modalMode per context — *Low*
+- [ ] **[P2-13]** Implement `TableFilters` (search with 150ms debounce + status/source multi-select + date range) — *Medium*
+- [ ] **[P2-14]** Implement `TableView` with useMemo filtering+sorting, sortable headers, `TableRow` — *Medium*
+- [ ] **[P2-15]** Implement `EmptyState` component — *Low*
 - [ ] **[P2-16]** Verify: full CRUD through Kanban and Table. Drag between columns persists. Filters work. — *Low*
 
 ---
@@ -79,17 +79,17 @@ These architectural choices are final. Do not re-open them during the build.
 ### Phase 3 — Dashboard with Charts
 *Overall complexity: Medium*
 
-- [x] **[P3-1]** Implement `GoalRing` SVG component (props: value, max, size, color — pure SVG, no Recharts) — *Medium*
-- [x] **[P3-2]** Implement `MetricCard` atom (number + label + optional sub-element) — *Low*
-- [x] **[P3-3]** Implement all 4 computed dashboard metrics (totalApps, thisWeekApps, responseRate, activePipeline) — *Low*
-- [x] **[P3-4]** Implement weekly history computation: last 8 ISO weeks, count apps by dateApplied per week — *Medium*
-- [x] **[P3-5]** Implement `StatusDonutChart` with Recharts PieChart, custom tooltip, legend — *Medium*
-- [x] **[P3-6]** Implement `WeeklyBarChart` with Recharts BarChart, ReferenceLine at weeklyGoal — *Medium*
-- [x] **[P3-7]** Implement `RecentActivityList` (last 5 by lastActivity, relative time formatting) — *Low*
-- [x] **[P3-8]** Implement `FollowUpList` (stale applied/screening jobs, "Mark as Followed Up" action) — *Low*
-- [x] **[P3-9]** Wire donut segment click → navigate to Table view with status filter pre-applied — *Low*
-- [x] **[P3-10]** Compose full `DashboardView` layout — *Low*
-- [x] **[P3-11]** Wire `EmptyState` to Dashboard, Kanban, Table — *Low*
+- [ ] **[P3-1]** Implement `GoalRing` SVG component (props: value, max, size, color — pure SVG, no Recharts) — *Medium*
+- [ ] **[P3-2]** Implement `MetricCard` atom (number + label + optional sub-element) — *Low*
+- [ ] **[P3-3]** Implement all 4 computed dashboard metrics (totalApps, thisWeekApps, responseRate, activePipeline) — *Low*
+- [ ] **[P3-4]** Implement weekly history computation: last 8 ISO weeks, count apps by dateApplied per week — *Medium*
+- [ ] **[P3-5]** Implement `StatusDonutChart` with Recharts PieChart, custom tooltip, legend — *Medium*
+- [ ] **[P3-6]** Implement `WeeklyBarChart` with Recharts BarChart, ReferenceLine at weeklyGoal — *Medium*
+- [ ] **[P3-7]** Implement `RecentActivityList` (last 5 by lastActivity, relative time formatting) — *Low*
+- [ ] **[P3-8]** Implement `FollowUpList` (stale applied/screening jobs, "Mark as Followed Up" action) — *Low*
+- [ ] **[P3-9]** Wire donut segment click → navigate to Table view with status filter pre-applied — *Low*
+- [ ] **[P3-10]** Compose full `DashboardView` layout — *Low*
+- [ ] **[P3-11]** Wire `EmptyState` to Dashboard, Kanban, Table — *Low*
 - [ ] **[P3-12]** Verify: add apps from different weeks, charts and all 4 metrics update correctly — *Low*
 
 ---
@@ -97,19 +97,19 @@ These architectural choices are final. Do not re-open them during the build.
 ### Phase 4 — AI Features
 *Overall complexity: Medium*
 
-- [x] **[P4-1]** Implement `callClaude(promptText, featureKey, maxTokens)` wrapper (see MASTER.md §11) — *Medium*
-- [x] **[P4-2]** Implement `FitScoreRing` SVG ring (color-coded: green 70–100, amber 40–69, red 0–39) — *Low*
-- [x] **[P4-3]** Implement `SkillPillRow` (horizontally scrollable colored pill tags, accepts color prop) — *Low*
-- [x] **[P4-4]** Implement `JDAnalyzerPanel` (textarea, button, FitScoreRing, 3× SkillPillRow, Save action) — *Medium*
-- [x] **[P4-5]** Implement `CoverLetterPanel` (inputs, button, editable textarea output, Copy + Save) — *Medium*
-- [x] **[P4-6]** Implement `AccordionItem` atom (toggle expand/collapse) — *Low*
-- [x] **[P4-7]** Implement `InterviewPrepPanel` (textarea + role type dropdown, button, AccordionItem list) — *Medium*
-- [x] **[P4-8]** Implement `AIResultsPanel` inside JobModal (3-tab panel: Analysis / Cover Letter / Interview Prep) — *Medium*
-- [x] **[P4-9]** Wire "Analyze from modal" to pre-fill jdText + save AIAnalysis to job + persist — *Low*
-- [x] **[P4-10]** Wire "Generate cover letter from modal" + save coverLetter to job + persist — *Low*
-- [x] **[P4-11]** Wire "Generate interview prep from modal" + save interviewPrep to job + persist — *Low*
-- [x] **[P4-12]** Implement Weekly Report modal (compute from state, plain text output, Copy button) — *Low*
-- [x] **[P4-13]** Implement JSON Export (Blob download, filename job-hunt-export-YYYY-MM-DD.json) — *Low*
+- [ ] **[P4-1]** Implement `callClaude(promptText, featureKey, maxTokens)` wrapper (see MASTER.md §11) — *Medium*
+- [ ] **[P4-2]** Implement `FitScoreRing` SVG ring (color-coded: green 70–100, amber 40–69, red 0–39) — *Low*
+- [ ] **[P4-3]** Implement `SkillPillRow` (horizontally scrollable colored pill tags, accepts color prop) — *Low*
+- [ ] **[P4-4]** Implement `JDAnalyzerPanel` (textarea, button, FitScoreRing, 3× SkillPillRow, Save action) — *Medium*
+- [ ] **[P4-5]** Implement `CoverLetterPanel` (inputs, button, editable textarea output, Copy + Save) — *Medium*
+- [ ] **[P4-6]** Implement `AccordionItem` atom (toggle expand/collapse) — *Low*
+- [ ] **[P4-7]** Implement `InterviewPrepPanel` (textarea + role type dropdown, button, AccordionItem list) — *Medium*
+- [ ] **[P4-8]** Implement `AIResultsPanel` inside JobModal (3-tab panel: Analysis / Cover Letter / Interview Prep) — *Medium*
+- [ ] **[P4-9]** Wire "Analyze from modal" to pre-fill jdText + save AIAnalysis to job + persist — *Low*
+- [ ] **[P4-10]** Wire "Generate cover letter from modal" + save coverLetter to job + persist — *Low*
+- [ ] **[P4-11]** Wire "Generate interview prep from modal" + save interviewPrep to job + persist — *Low*
+- [ ] **[P4-12]** Implement Weekly Report modal (compute from state, plain text output, Copy button) — *Low*
+- [ ] **[P4-13]** Implement JSON Export (Blob download, filename job-hunt-export-YYYY-MM-DD.json) — *Low*
 - [ ] **[P4-14]** Verify: analyze JD → save → close modal → reopen → cached result with date. All 3 AI tools parse correctly. — *Low*
 
 ---
@@ -117,17 +117,17 @@ These architectural choices are final. Do not re-open them during the build.
 ### Phase 5 — Polish, Animations, Error Handling
 *Overall complexity: Low–Medium*
 
-- [x] **[P5-1]** Add modal slide-up entry/exit CSS transitions (transform + opacity keyframes) — *Low*
-- [x] **[P5-2]** Add AI output shimmer loading placeholder (pulsing gray lines, CSS keyframe) — *Low*
-- [x] **[P5-3]** Add Kanban drag ghost card visual (pointer-position clone, semi-transparent) — *Medium*
-- [x] **[P5-4]** Add toast enter/exit animations (slide-in from right, slide-out right) — *Low*
-- [x] **[P5-5]** Add Kanban column drop-zone cyan dashed border during active drag — *Low*
-- [x] **[P5-6]** Add focus ring styles on all interactive elements (outline: 2px solid #00C8FF) — *Low*
-- [x] **[P5-7]** Add storageReady === false full-screen loading state (spinner + "Loading your command center…") — *Low*
-- [x] **[P5-8]** Implement `SettingsPanel` overlay (name, weeklyGoal, targetRoles, Export button) — *Low*
-- [x] **[P5-9]** Audit all aiLoading states — every AI call disables inputs and restores correctly — *Low*
-- [x] **[P5-10]** Audit all error paths — every storage write failure shows toast and rolls back state — *Low*
-- [x] **[P5-11]** Verify line count < 3000 — extract repeated JSX into components if needed — *Low*
+- [ ] **[P5-1]** Add modal slide-up entry/exit CSS transitions (transform + opacity keyframes) — *Low*
+- [ ] **[P5-2]** Add AI output shimmer loading placeholder (pulsing gray lines, CSS keyframe) — *Low*
+- [ ] **[P5-3]** Add Kanban drag ghost card visual (pointer-position clone, semi-transparent) — *Medium*
+- [ ] **[P5-4]** Add toast enter/exit animations (slide-in from right, slide-out right) — *Low*
+- [ ] **[P5-5]** Add Kanban column drop-zone cyan dashed border during active drag — *Low*
+- [ ] **[P5-6]** Add focus ring styles on all interactive elements (outline: 2px solid #00C8FF) — *Low*
+- [ ] **[P5-7]** Add storageReady === false full-screen loading state (spinner + "Loading your command center…") — *Low*
+- [ ] **[P5-8]** Implement `SettingsPanel` overlay (name, weeklyGoal, targetRoles, Export button) — *Low*
+- [ ] **[P5-9]** Audit all aiLoading states — every AI call disables inputs and restores correctly — *Low*
+- [ ] **[P5-10]** Audit all error paths — every storage write failure shows toast and rolls back state — *Low*
+- [ ] **[P5-11]** Verify line count < 3000 — extract repeated JSX into components if needed — *Low*
 - [ ] **[P5-12]** Final walkthrough: all 3 tiers, all 5 empty states, all error states, all loading states — *Low*
 
 ---
