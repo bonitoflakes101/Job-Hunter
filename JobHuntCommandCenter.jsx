@@ -1913,15 +1913,17 @@ function DashboardView({ jobs, settings, setView, setTableFilters, updateJob, on
 // AI PANELS
 // ─────────────────────────────────────────────────────────────────────────────
 
-function JDAnalyzerPanel({ initialJdText = '', initialResult = null, showToast, aiLoading, setAiLoading, aiError, setAiError, onSave, resume = '' }) {
+function JDAnalyzerPanel({ initialJdText = '', initialResult = null, showToast, aiLoading, setAiLoading, aiError, setAiError, onSave, resume = '', embeddedJdText }) {
   const [jdText, setJdText] = useState(initialJdText)
   const [result, setResult] = useState(initialResult)
   const loading = aiLoading['jd-analyzer']
+  const isEmbedded = embeddedJdText !== undefined
+  const effectiveJd = isEmbedded ? embeddedJdText : jdText
 
   const analyze = async () => {
-    if (!jdText.trim()) { showToast('error', 'Paste a job description first.'); return }
+    if (!effectiveJd.trim()) { showToast('error', isEmbedded ? 'Add a job description in the form above first.' : 'Paste a job description first.'); return }
     const candidateCtx = resume && resume.trim() ? resume.trim() : USER_BACKGROUND_CONTEXT
-    const prompt = `You are a career advisor AI. Analyze the following job description against a candidate's background and return a fit assessment.\n\nCANDIDATE BACKGROUND:\n${candidateCtx}\n\nJOB DESCRIPTION:\n${jdText}\n\nAnalyze the fit between the candidate and this role. Return ONLY a valid JSON object with NO markdown formatting, NO code fences, NO preamble, NO trailing text. The JSON must match this exact structure:\n\n{\n  "fit_score": <integer 0-100, overall fit percentage>,\n  "matched_skills": [<array of strings: skills/technologies in the JD that the candidate has>],\n  "gaps": [<array of strings: skills/technologies in the JD that the candidate is missing or weak in>],\n  "keywords": [<array of strings: 8-12 resume optimization keywords extracted from the JD, prioritized by frequency and importance>]\n}\n\nScoring guide:\n- 80-100: Strong match, candidate has most required and preferred qualifications\n- 60-79: Good match, candidate has core requirements but some gaps\n- 40-59: Partial match, significant gaps but transferable skills present\n- 0-39: Weak match, major skill misalignment\n\nBe specific in matched_skills and gaps — use the exact technology names as written in the JD. Limit each array to a maximum of 10 items.`
+    const prompt = `You are a career advisor AI. Analyze the following job description against a candidate's background and return a fit assessment.\n\nCANDIDATE BACKGROUND:\n${candidateCtx}\n\nJOB DESCRIPTION:\n${effectiveJd}\n\nAnalyze the fit between the candidate and this role. Return ONLY a valid JSON object with NO markdown formatting, NO code fences, NO preamble, NO trailing text. The JSON must match this exact structure:\n\n{\n  "fit_score": <integer 0-100, overall fit percentage>,\n  "matched_skills": [<array of strings: skills/technologies in the JD that the candidate has>],\n  "gaps": [<array of strings: skills/technologies in the JD that the candidate is missing or weak in>],\n  "keywords": [<array of strings: 8-12 resume optimization keywords extracted from the JD, prioritized by frequency and importance>]\n}\n\nScoring guide:\n- 80-100: Strong match, candidate has most required and preferred qualifications\n- 60-79: Good match, candidate has core requirements but some gaps\n- 40-59: Partial match, significant gaps but transferable skills present\n- 0-39: Weak match, major skill misalignment\n\nBe specific in matched_skills and gaps — use the exact technology names as written in the JD. Limit each array to a maximum of 10 items.`
     const r = await callAI(prompt, 'jd-analyzer', 800, setAiLoading, setAiError, showToast)
     if (r) setResult({ ...r, generatedAt: new Date().toISOString() })
   }
@@ -1931,11 +1933,21 @@ function JDAnalyzerPanel({ initialJdText = '', initialResult = null, showToast, 
       <h3 style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 600, fontSize: '15px', color: C.textPrimary, marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
         <Search size={15} style={{ color: C.cyan }} /> JD Fit Analyzer
       </h3>
-      <textarea value={jdText} onChange={e => setJdText(e.target.value)} disabled={loading}
-        placeholder="Paste the job description here…" rows={6}
-        style={{ width: '100%', background: C.bgBase, border: `1px solid ${C.border}`, borderRadius: '7px', padding: '10px 12px', color: C.textPrimary, fontSize: '13px', lineHeight: 1.5, resize: 'vertical', boxSizing: 'border-box', opacity: loading ? 0.6 : 1 }} />
-      <button onClick={analyze} disabled={loading}
-        style={{ marginTop: '10px', display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 18px', background: loading ? C.bgElevated : C.cyanDim, border: `1px solid ${loading ? C.border : C.cyan}`, borderRadius: '7px', color: loading ? C.textSecondary : C.cyan, fontSize: '13px', fontWeight: 500, cursor: loading ? 'not-allowed' : 'pointer' }}>
+      {!isEmbedded && (
+        <textarea value={jdText} onChange={e => setJdText(e.target.value)} disabled={loading}
+          placeholder="Paste the job description here…" rows={6}
+          style={{ width: '100%', background: C.bgBase, border: `1px solid ${C.border}`, borderRadius: '7px', padding: '10px 12px', color: C.textPrimary, fontSize: '13px', lineHeight: 1.5, resize: 'vertical', boxSizing: 'border-box', opacity: loading ? 0.6 : 1 }} />
+      )}
+      {isEmbedded && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px', background: C.bgBase, border: `1px solid ${effectiveJd.trim() ? C.border : C.borderSubtle}`, borderRadius: '7px', marginBottom: '10px' }}>
+          <FileText size={13} style={{ color: effectiveJd.trim() ? C.cyan : C.textGhost, flexShrink: 0 }} />
+          <p style={{ fontSize: '12px', color: effectiveJd.trim() ? C.textSecondary : C.textGhost, margin: 0 }}>
+            {effectiveJd.trim() ? 'Using job description from this application' : 'Add a job description in the "Job Description" field above to analyze fit'}
+          </p>
+        </div>
+      )}
+      <button onClick={analyze} disabled={loading || (isEmbedded && !effectiveJd.trim())}
+        style={{ marginTop: isEmbedded ? '0' : '10px', display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 18px', background: (loading || (isEmbedded && !effectiveJd.trim())) ? C.bgElevated : C.cyanDim, border: `1px solid ${(loading || (isEmbedded && !effectiveJd.trim())) ? C.border : C.cyan}`, borderRadius: '7px', color: (loading || (isEmbedded && !effectiveJd.trim())) ? C.textSecondary : C.cyan, fontSize: '13px', fontWeight: 500, cursor: (loading || (isEmbedded && !effectiveJd.trim())) ? 'not-allowed' : 'pointer' }}>
         {loading ? <><Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> Analyzing…</> : <><Search size={13} /> Analyze Fit</>}
       </button>
       {loading && <AIShimmer />}
@@ -1968,7 +1980,7 @@ function JDAnalyzerPanel({ initialJdText = '', initialResult = null, showToast, 
   )
 }
 
-function CoverLetterPanel({ initialCompany = '', initialRole = '', initialJdText = '', initialResult = null, showToast, aiLoading, setAiLoading, aiError, setAiError, onSave, resume = '' }) {
+function CoverLetterPanel({ initialCompany = '', initialRole = '', initialJdText = '', initialResult = null, showToast, aiLoading, setAiLoading, aiError, setAiError, onSave, resume = '', embeddedJdText, embeddedCompany, embeddedRole }) {
   const [company, setCompany] = useState(initialCompany)
   const [role, setRole] = useState(initialRole)
   const [jdText, setJdText] = useState(initialJdText)
@@ -1976,16 +1988,20 @@ function CoverLetterPanel({ initialCompany = '', initialRole = '', initialJdText
   const [letterText, setLetterText] = useState(initialResult?.cover_letter?.replace(/\\n\\n/g, '\n\n') || '')
   const [errs, setErrs] = useState({})
   const loading = aiLoading['cover-letter']
+  const isEmbedded = embeddedJdText !== undefined
+  const effectiveCompany = isEmbedded ? (embeddedCompany ?? '') : company
+  const effectiveRole = isEmbedded ? (embeddedRole ?? '') : role
+  const effectiveJd = isEmbedded ? embeddedJdText : jdText
 
   const generate = async () => {
     const e = {}
-    if (!company.trim()) e.company = 'Required'
-    if (!role.trim()) e.role = 'Required'
+    if (!effectiveCompany.trim()) e.company = 'Required'
+    if (!effectiveRole.trim()) e.role = 'Required'
     setErrs(e)
     if (Object.keys(e).length) return
-    const jd = jdText.length > 3500 ? jdText.slice(0, 3500) : jdText
+    const jd = effectiveJd.length > 3500 ? effectiveJd.slice(0, 3500) : effectiveJd
     const candidateCtx = resume && resume.trim() ? resume.trim() : USER_BACKGROUND_CONTEXT
-    const prompt = `You are a professional cover letter writer specializing in tech roles. Write a tailored cover letter for the following application.\n\nCANDIDATE BACKGROUND:\n${candidateCtx}\n\nAPPLICATION DETAILS:\n- Company: ${company}\n- Role: ${role}\n- Job Description: ${jd}\n\nWrite a professional cover letter that:\n1. Opens with a specific hook referencing the company or role (not a generic opener)\n2. Highlights 2-3 most relevant AWS/DevOps skills that directly match requirements in the JD\n3. References concrete examples from the candidate's background (use plausible specifics based on the background provided — cloud infrastructure projects, containerization work, IaC implementations)\n4. Keeps a confident, professional tone without being arrogant\n5. Is 3-4 paragraphs, approximately 250-320 words total\n6. Ends with a specific call to action\n\nReturn ONLY a valid JSON object with NO markdown, NO code fences, NO preamble:\n\n{\n  "cover_letter": "<the complete cover letter text as a single string, with paragraph breaks as \\\\n\\\\n>",\n  "key_points": [<array of 3 strings: the 3 main selling points emphasized in this letter>]\n}`
+    const prompt = `You are a professional cover letter writer specializing in tech roles. Write a tailored cover letter for the following application.\n\nCANDIDATE BACKGROUND:\n${candidateCtx}\n\nAPPLICATION DETAILS:\n- Company: ${effectiveCompany}\n- Role: ${effectiveRole}\n- Job Description: ${jd}\n\nWrite a professional cover letter that:\n1. Opens with a specific hook referencing the company or role (not a generic opener)\n2. Highlights 2-3 most relevant AWS/DevOps skills that directly match requirements in the JD\n3. References concrete examples from the candidate's background (use plausible specifics based on the background provided — cloud infrastructure projects, containerization work, IaC implementations)\n4. Keeps a confident, professional tone without being arrogant\n5. Is 3-4 paragraphs, approximately 250-320 words total\n6. Ends with a specific call to action\n\nReturn ONLY a valid JSON object with NO markdown, NO code fences, NO preamble:\n\n{\n  "cover_letter": "<the complete cover letter text as a single string, with paragraph breaks as \\\\n\\\\n>",\n  "key_points": [<array of 3 strings: the 3 main selling points emphasized in this letter>]\n}`
     const r = await callAI(prompt, 'cover-letter', 1200, setAiLoading, setAiError, showToast)
     if (r) {
       setResult({ ...r, generatedAt: new Date().toISOString() })
@@ -2006,19 +2022,38 @@ function CoverLetterPanel({ initialCompany = '', initialRole = '', initialJdText
       <h3 style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 600, fontSize: '15px', color: C.textPrimary, marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
         <FileText size={15} style={{ color: C.violet }} /> Cover Letter Generator
       </h3>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
-        <div>
-          <input value={company} onChange={e => { setCompany(e.target.value); setErrs(p => ({ ...p, company: null })) }} disabled={loading} placeholder="Company name *" style={fieldStyle('company')} />
-          {errs.company && <p style={{ fontSize: '11px', color: C.red, marginTop: '3px' }}>{errs.company}</p>}
+      {!isEmbedded ? (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
+          <div>
+            <input value={company} onChange={e => { setCompany(e.target.value); setErrs(p => ({ ...p, company: null })) }} disabled={loading} placeholder="Company name *" style={fieldStyle('company')} />
+            {errs.company && <p style={{ fontSize: '11px', color: C.red, marginTop: '3px' }}>{errs.company}</p>}
+          </div>
+          <div>
+            <input value={role} onChange={e => { setRole(e.target.value); setErrs(p => ({ ...p, role: null })) }} disabled={loading} placeholder="Role title *" style={fieldStyle('role')} />
+            {errs.role && <p style={{ fontSize: '11px', color: C.red, marginTop: '3px' }}>{errs.role}</p>}
+          </div>
         </div>
-        <div>
-          <input value={role} onChange={e => { setRole(e.target.value); setErrs(p => ({ ...p, role: null })) }} disabled={loading} placeholder="Role title *" style={fieldStyle('role')} />
-          {errs.role && <p style={{ fontSize: '11px', color: C.red, marginTop: '3px' }}>{errs.role}</p>}
+      ) : (
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '10px', flexWrap: 'wrap' }}>
+          <span style={{ padding: '6px 12px', background: C.bgBase, border: `1px solid ${C.border}`, borderRadius: '6px', fontSize: '12px', color: effectiveCompany ? C.textPrimary : C.textGhost, fontWeight: effectiveCompany ? 500 : 400 }}>{effectiveCompany || 'No company'}</span>
+          <span style={{ padding: '6px 12px', background: C.bgBase, border: `1px solid ${C.border}`, borderRadius: '6px', fontSize: '12px', color: effectiveRole ? C.textSecondary : C.textGhost }}>{effectiveRole || 'No role'}</span>
+          {errs.company && <p style={{ fontSize: '11px', color: C.red, width: '100%', margin: '2px 0 0' }}>Company name is required — fill in the form above</p>}
+          {errs.role && <p style={{ fontSize: '11px', color: C.red, width: '100%', margin: '2px 0 0' }}>Role is required — fill in the form above</p>}
         </div>
-      </div>
-      <textarea value={jdText} onChange={e => setJdText(e.target.value)} disabled={loading}
-        placeholder="Job description (optional but recommended)…" rows={4}
-        style={{ width: '100%', background: C.bgBase, border: `1px solid ${C.border}`, borderRadius: '7px', padding: '10px 12px', color: C.textPrimary, fontSize: '13px', lineHeight: 1.5, resize: 'vertical', boxSizing: 'border-box', marginBottom: '10px', opacity: loading ? 0.6 : 1 }} />
+      )}
+      {!isEmbedded && (
+        <textarea value={jdText} onChange={e => setJdText(e.target.value)} disabled={loading}
+          placeholder="Job description (optional but recommended)…" rows={4}
+          style={{ width: '100%', background: C.bgBase, border: `1px solid ${C.border}`, borderRadius: '7px', padding: '10px 12px', color: C.textPrimary, fontSize: '13px', lineHeight: 1.5, resize: 'vertical', boxSizing: 'border-box', marginBottom: '10px', opacity: loading ? 0.6 : 1 }} />
+      )}
+      {isEmbedded && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px', background: C.bgBase, border: `1px solid ${effectiveJd.trim() ? C.border : C.borderSubtle}`, borderRadius: '7px', marginBottom: '10px' }}>
+          <FileText size={13} style={{ color: effectiveJd.trim() ? C.violet : C.textGhost, flexShrink: 0 }} />
+          <p style={{ fontSize: '12px', color: effectiveJd.trim() ? C.textSecondary : C.textGhost, margin: 0 }}>
+            {effectiveJd.trim() ? 'Using job description from this application' : 'Add a job description above for a more tailored letter (optional)'}
+          </p>
+        </div>
+      )}
       <button onClick={generate} disabled={loading}
         style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 18px', background: loading ? C.bgElevated : C.violetDim, border: `1px solid ${loading ? C.border : C.violet}`, borderRadius: '7px', color: loading ? C.textSecondary : C.violet, fontSize: '13px', fontWeight: 500, cursor: loading ? 'not-allowed' : 'pointer' }}>
         {loading ? <><Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> Generating…</> : <><FileText size={13} /> Generate Cover Letter</>}
@@ -2049,16 +2084,18 @@ function CoverLetterPanel({ initialCompany = '', initialRole = '', initialJdText
   )
 }
 
-function InterviewPrepPanel({ initialJdText = '', initialResult = null, showToast, aiLoading, setAiLoading, aiError, setAiError, onSave, resume = '' }) {
+function InterviewPrepPanel({ initialJdText = '', initialResult = null, showToast, aiLoading, setAiLoading, aiError, setAiError, onSave, resume = '', embeddedJdText }) {
   const [jdText, setJdText] = useState(initialJdText)
   const [roleType, setRoleType] = useState('Hybrid')
   const [result, setResult] = useState(initialResult)
   const loading = aiLoading['interview-prep']
+  const isEmbedded = embeddedJdText !== undefined
+  const effectiveJd = isEmbedded ? embeddedJdText : jdText
 
   const generate = async () => {
-    if (!jdText.trim()) { showToast('error', 'Paste a job description first.'); return }
+    if (!effectiveJd.trim()) { showToast('error', isEmbedded ? 'Add a job description in the form above first.' : 'Paste a job description first.'); return }
     const counts = { 'Technical': '6 technical + 3 behavioral', 'Hybrid': '4 technical + 4 behavioral', 'Behavioral-Heavy': '2 technical + 6 behavioral' }
-    const jd = jdText.length > 2500 ? jdText.slice(0, 2500) : jdText
+    const jd = effectiveJd.length > 2500 ? effectiveJd.slice(0, 2500) : effectiveJd
     const candidateCtx = resume && resume.trim() ? resume.trim() : USER_BACKGROUND_CONTEXT
     const prompt = `You are a senior interview coach with a 90%+ offer rate. Your job is to write HIGH-CONVERSION interview answers — not just good answers, but answers specifically engineered to pass HR screening and move the candidate to the next round.\n\nCANDIDATE BACKGROUND (use this as the sole source of truth for their experiences — do not invent experiences not mentioned here):\n${candidateCtx}\n\nJOB DESCRIPTION:\n${jd}\n\nINTERVIEW TYPE: ${roleType}\nQuestion count: ${counts[roleType]} + 5 HR questions\n\nRULES FOR ALL ANSWERS:\n- First person, spoken — how a confident professional actually talks in an interview, not how they write a cover letter\n- NEVER open with "As an AWS-certified...", "I am excited about the opportunity", or "I am passionate about..."\n- Every claim must be backed by a specific experience from the candidate's background (project, tool, outcome)\n- Answers are 3-5 sentences — tight and purposeful, no filler\n- Technical/behavioral answers: lead with the situation or result, then the how\n\nHR QUESTIONS — PASS-OPTIMIZATION RULES:\nThese questions decide whether the candidate advances. Engineer each answer to send the right signal:\n\n1. "Tell me about yourself" — The interviewer wants: can you communicate clearly? does your background fit?\n   Formula: [1 sentence: who you are + most relevant credential] → [2 sentences: the specific experience from your background that is the strongest match for THIS job's core requirement] → [1 sentence: why THIS company specifically, referencing something from the JD]\n   Do NOT summarize your whole resume. End on why them.\n\n2. "What are your greatest strengths?" — The interviewer wants: are you self-aware? does your strength directly help us?\n   Formula: Name 1 strength → prove it with a specific example from the candidate's work → tie it to what this role needs\n   Choose the strength that overlaps most with the JD's core requirements.\n\n3. "What is your greatest weakness?" — The interviewer wants: are you self-aware? will this weakness hurt us?\n   Formula: Name a REAL weakness (not "I work too hard") → describe a specific moment it affected your work → explain the concrete habit or system you now use to manage it\n   Pick a weakness that is (a) genuine and (b) not a core requirement of this specific role.\n\n4. "Why do you want to work here?" — The interviewer wants: are you going to stay? did you do your research?\n   Formula: Reference 1-2 SPECIFIC things from the JD (tech stack, company mission, team structure, product) → connect it to the candidate's career goal → say what specific value you bring to them\n   Generic enthusiasm is an instant red flag. Be specific.\n\n5. "Where do you see yourself in 5 years?" — The interviewer wants: will you grow with us or leave in 1 year?\n   Formula: Realistic near-term goal (2 years) that deepens skills in THIS role → longer-term goal (5 years) that aligns with a growth path this company could provide → end by tying it back to this role as the right starting point\n   Show ambition without suggesting you'll leave for a different company or field.\n\nFor each HR question, also write a coaching_tip — 1-2 sentences explaining what psychological signal this answer sends to the interviewer and what to emphasize during delivery (e.g., pace, eye contact, specificity).\n\nThe hr_questions array must ALWAYS contain exactly these 5 questions in this order:\n1. "Tell me about yourself."\n2. "What are your greatest strengths?"\n3. "What is your greatest weakness?"\n4. "Why do you want to work here / why are you interested in this role?"\n5. "Where do you see yourself in 5 years?"\n\nReturn ONLY a valid JSON object with NO markdown, NO code fences, NO preamble:\n\n{\n  "technical_questions": [\n    { "question": "<question>", "suggested_answer": "<spoken answer referencing specific tech from JD and candidate background>" }\n  ],\n  "behavioral_questions": [\n    { "question": "<question>", "suggested_answer": "<spoken STAR answer using a realistic scenario from candidate background>" }\n  ],\n  "hr_questions": [\n    { "question": "<one of the 5 HR questions>", "suggested_answer": "<high-conversion spoken answer, sounds human>", "coaching_tip": "<what this answer signals + delivery tip>" }\n  ]\n}\n\nTechnical questions: reference specific tools/services from the JD. Behavioral questions: draw from realistic DevOps/cloud scenarios (on-call, deployments, incidents, cross-team collaboration, learning under pressure).`
     const r = await callAI(prompt, 'interview-prep', 2500, setAiLoading, setAiError, showToast)
@@ -2071,16 +2108,25 @@ function InterviewPrepPanel({ initialJdText = '', initialResult = null, showToas
         <Star size={15} style={{ color: C.amber }} /> Interview Prep
       </h3>
       <div style={{ display: 'flex', gap: '10px', marginBottom: '10px', alignItems: 'flex-start' }}>
-        <textarea value={jdText} onChange={e => setJdText(e.target.value)} disabled={loading}
-          placeholder="Paste the job description here…" rows={5}
-          style={{ flex: 1, background: C.bgBase, border: `1px solid ${C.border}`, borderRadius: '7px', padding: '10px 12px', color: C.textPrimary, fontSize: '13px', lineHeight: 1.5, resize: 'vertical', opacity: loading ? 0.6 : 1 }} />
+        {!isEmbedded ? (
+          <textarea value={jdText} onChange={e => setJdText(e.target.value)} disabled={loading}
+            placeholder="Paste the job description here…" rows={5}
+            style={{ flex: 1, background: C.bgBase, border: `1px solid ${C.border}`, borderRadius: '7px', padding: '10px 12px', color: C.textPrimary, fontSize: '13px', lineHeight: 1.5, resize: 'vertical', opacity: loading ? 0.6 : 1 }} />
+        ) : (
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px', background: C.bgBase, border: `1px solid ${effectiveJd.trim() ? C.border : C.borderSubtle}`, borderRadius: '7px' }}>
+            <Star size={13} style={{ color: effectiveJd.trim() ? C.amber : C.textGhost, flexShrink: 0 }} />
+            <p style={{ fontSize: '12px', color: effectiveJd.trim() ? C.textSecondary : C.textGhost, margin: 0 }}>
+              {effectiveJd.trim() ? 'Using job description from this application' : 'Add a job description in the form above to generate questions'}
+            </p>
+          </div>
+        )}
         <select value={roleType} onChange={e => setRoleType(e.target.value)} disabled={loading}
           style={{ flexShrink: 0, background: C.bgBase, border: `1px solid ${C.border}`, borderRadius: '7px', padding: '9px 12px', color: C.textPrimary, fontSize: '12px', cursor: 'pointer' }}>
           {['Technical', 'Hybrid', 'Behavioral-Heavy'].map(t => <option key={t} value={t}>{t}</option>)}
         </select>
       </div>
-      <button onClick={generate} disabled={loading}
-        style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 18px', background: loading ? C.bgElevated : C.amberDim, border: `1px solid ${loading ? C.border : C.amber}`, borderRadius: '7px', color: loading ? C.textSecondary : C.amber, fontSize: '13px', fontWeight: 500, cursor: loading ? 'not-allowed' : 'pointer' }}>
+      <button onClick={generate} disabled={loading || (isEmbedded && !effectiveJd.trim())}
+        style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 18px', background: (loading || (isEmbedded && !effectiveJd.trim())) ? C.bgElevated : C.amberDim, border: `1px solid ${(loading || (isEmbedded && !effectiveJd.trim())) ? C.border : C.amber}`, borderRadius: '7px', color: (loading || (isEmbedded && !effectiveJd.trim())) ? C.textSecondary : C.amber, fontSize: '13px', fontWeight: 500, cursor: (loading || (isEmbedded && !effectiveJd.trim())) ? 'not-allowed' : 'pointer' }}>
         {loading ? <><Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> Generating…</> : <><Star size={13} /> Generate Questions</>}
       </button>
       {loading && <AIShimmer />}
@@ -2166,26 +2212,30 @@ function FollowUpEmailPanel({ job, showToast, aiLoading, setAiLoading, aiError, 
 
 function AIResultsPanel({ job, onUpdateJob, showToast, aiLoading, setAiLoading, aiError, setAiError, resume = '' }) {
   const [tab, setTab] = useState('analysis')
-  if (!job.jdText?.trim() && !job.aiAnalysis && !job.coverLetter && !job.interviewPrep && !job.followUpEmail) return null
+  const hasJd = !!job.jdText?.trim()
   const tabs = [
-    { id: 'analysis',    label: 'JD Analysis',    color: C.cyan   },
-    { id: 'cover-letter',label: 'Cover Letter',   color: C.violet },
-    { id: 'interview',   label: 'Interview Prep', color: C.amber  },
-    { id: 'follow-up',   label: 'Follow-up Email',color: C.emerald},
+    { id: 'analysis',     label: 'JD Analysis',     color: C.cyan,    dot: !!job.aiAnalysis   },
+    { id: 'cover-letter', label: 'Cover Letter',     color: C.violet,  dot: !!job.coverLetter  },
+    { id: 'interview',    label: 'Interview Prep',   color: C.amber,   dot: !!job.interviewPrep},
+    { id: 'follow-up',    label: 'Follow-up Email',  color: C.emerald, dot: !!job.followUpEmail},
   ]
   return (
     <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: `1px solid ${C.borderSubtle}` }}>
-      <p style={{ fontSize: '11px', color: C.textGhost, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600, marginBottom: '12px' }}>AI Tools</p>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+        <p style={{ fontSize: '11px', color: C.textGhost, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600 }}>AI Tools</p>
+        {!hasJd && <p style={{ fontSize: '11px', color: C.textGhost }}>Add a Job Description above to unlock AI analysis</p>}
+      </div>
       <div style={{ display: 'flex', gap: '4px', marginBottom: '16px', flexWrap: 'wrap' }}>
         {tabs.map(t => (
-          <button key={t.id} onClick={() => setTab(t.id)} style={{ padding: '6px 14px', borderRadius: '6px', fontSize: '12px', fontWeight: 500, border: `1px solid ${tab === t.id ? t.color : C.border}`, background: tab === t.id ? `${t.color}18` : 'transparent', color: tab === t.id ? t.color : C.textSecondary, cursor: 'pointer' }}>
+          <button key={t.id} onClick={() => setTab(t.id)} style={{ position: 'relative', padding: '6px 14px', borderRadius: '6px', fontSize: '12px', fontWeight: 500, border: `1px solid ${tab === t.id ? t.color : C.border}`, background: tab === t.id ? `${t.color}18` : 'transparent', color: tab === t.id ? t.color : C.textSecondary, cursor: 'pointer' }}>
             {t.label}
+            {t.dot && <span style={{ position: 'absolute', top: '4px', right: '4px', width: '5px', height: '5px', borderRadius: '50%', background: t.color }} />}
           </button>
         ))}
       </div>
-      {tab === 'analysis'    && <JDAnalyzerPanel initialJdText={job.jdText || ''} initialResult={job.aiAnalysis} showToast={showToast} aiLoading={aiLoading} setAiLoading={setAiLoading} aiError={aiError} setAiError={setAiError} onSave={r => onUpdateJob({ aiAnalysis: r })} resume={resume} />}
-      {tab === 'cover-letter'&& <CoverLetterPanel initialCompany={job.company} initialRole={job.role} initialJdText={job.jdText || ''} initialResult={job.coverLetter ? { cover_letter: job.coverLetter } : null} showToast={showToast} aiLoading={aiLoading} setAiLoading={setAiLoading} aiError={aiError} setAiError={setAiError} onSave={text => onUpdateJob({ coverLetter: text })} resume={resume} />}
-      {tab === 'interview'   && <InterviewPrepPanel initialJdText={job.jdText || ''} initialResult={job.interviewPrep} showToast={showToast} aiLoading={aiLoading} setAiLoading={setAiLoading} aiError={aiError} setAiError={setAiError} onSave={r => onUpdateJob({ interviewPrep: r })} resume={resume} />}
+      {tab === 'analysis'    && <JDAnalyzerPanel initialJdText={job.jdText || ''} initialResult={job.aiAnalysis} showToast={showToast} aiLoading={aiLoading} setAiLoading={setAiLoading} aiError={aiError} setAiError={setAiError} onSave={r => onUpdateJob({ aiAnalysis: r })} resume={resume} embeddedJdText={job.jdText ?? ''} />}
+      {tab === 'cover-letter'&& <CoverLetterPanel initialCompany={job.company} initialRole={job.role} initialJdText={job.jdText || ''} initialResult={job.coverLetter ? { cover_letter: job.coverLetter } : null} showToast={showToast} aiLoading={aiLoading} setAiLoading={setAiLoading} aiError={aiError} setAiError={setAiError} onSave={text => onUpdateJob({ coverLetter: text })} resume={resume} embeddedJdText={job.jdText ?? ''} embeddedCompany={job.company ?? ''} embeddedRole={job.role ?? ''} />}
+      {tab === 'interview'   && <InterviewPrepPanel initialJdText={job.jdText || ''} initialResult={job.interviewPrep} showToast={showToast} aiLoading={aiLoading} setAiLoading={setAiLoading} aiError={aiError} setAiError={setAiError} onSave={r => onUpdateJob({ interviewPrep: r })} resume={resume} embeddedJdText={job.jdText ?? ''} />}
       {tab === 'follow-up'   && <FollowUpEmailPanel job={job} showToast={showToast} aiLoading={aiLoading} setAiLoading={setAiLoading} aiError={aiError} setAiError={setAiError} onSave={r => onUpdateJob({ followUpEmail: r })} resume={resume} />}
     </div>
   )
