@@ -2543,7 +2543,7 @@ export default function App() {
       const savedTheme = await storageGet('settings:theme', 'dark')
       _themeColors = savedTheme === 'light' ? LIGHT : DARK
 
-      // Drain userscript quick-add queue (written to localStorage by jhcc-tracker.user.js)
+      // Drain localStorage queue written by quick-add.html (non-LinkedIn sites)
       try {
         const raw = localStorage.getItem('jhcc-quick-add-queue')
         if (raw) {
@@ -2562,19 +2562,18 @@ export default function App() {
               dateSaved: now.slice(0, 10),
               lastActivity: now,
             }
-            await storageSet(`jobs:${job.id}`, job)
-            loadedJobs.unshift(job)
+            if (await storageSet(`jobs:${job.id}`, job)) loadedJobs.unshift(job)
           }
-          await storageSet('jobs:index', [...validIds, ...loadedJobs.slice(0, queued.length).map(j => j.id)])
+          await storageSet('jobs:index', loadedJobs.map(j => j.id))
         }
-      } catch (e) { console.error('[quickAdd queue]', e) }
+      } catch (e) { console.error('[JHCC] quickAdd queue error:', e) }
 
       setTheme(savedTheme)
       setJobs(loadedJobs)
       setSettings({ ...DEFAULT_SETTINGS, ...loadedSettings })
       setStorageReady(true)
 
-      // Bookmarklet prefill — open Add Job modal with extracted data
+      // Prefill Add Job modal when opened via Add & Edit from the userscript
       const params = new URLSearchParams(window.location.hash.slice(1))
       if (params.get('addJob') === '1') {
         window.history.replaceState({}, '', window.location.pathname)
@@ -2628,6 +2627,23 @@ export default function App() {
     const handler = (e) => { if (e.key === 'jhcc-quick-add-queue' && e.newValue) drain() }
     window.addEventListener('storage', handler)
     return () => window.removeEventListener('storage', handler)
+  }, [addJob])
+
+  // Poll /api/track every 3s for jobs queued by the userscript via fetch()
+  // This is the primary mechanism for sites (like LinkedIn) that block window.open
+  useEffect(() => {
+    const poll = async () => {
+      try {
+        const res = await fetch('/api/track')
+        if (!res.ok) return
+        const { jobs } = await res.json()
+        for (const item of jobs) {
+          await addJob({ company: item.company || '', role: item.role || '', url: item.url || '', source: item.source || 'Other', status: 'saved' })
+        }
+      } catch (e) { /* dev server not running — ignore */ }
+    }
+    const id = setInterval(poll, 3000)
+    return () => clearInterval(id)
   }, [addJob])
 
   const updateJob = useCallback(async (id, changes) => {

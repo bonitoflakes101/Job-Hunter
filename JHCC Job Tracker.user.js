@@ -19,6 +19,20 @@
 (function () {
   if (window.self !== window.top) return;
 
+  // Opens a URL in a new tab via anchor click.
+  // Unlike window.open(), this is not blocked by popup blockers when called
+  // inside a real user-click handler. bubbles:false hides it from LinkedIn's
+  // document-level click listeners.
+  function openTab(url) {
+    var a = document.createElement('a');
+    a.href = url;
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    document.body.appendChild(a);
+    a.dispatchEvent(new MouseEvent('click', { bubbles: false, cancelable: true, view: window }));
+    setTimeout(function () { if (a.parentNode) a.parentNode.removeChild(a); }, 300);
+  }
+
   function q(sels) {
     for (var i = 0; i < sels.length; i++) {
       var el = document.querySelector(sels[i]);
@@ -35,24 +49,63 @@
     if (h.includes('linkedin.com')) {
       source = 'LinkedIn';
 
-      // Role: updated selectors for LinkedIn's 2025 DOM
       role = q([
-        '[data-test-job-detail-title]',
         '.job-details-jobs-unified-top-card__job-title h1',
+        'h1.job-details-jobs-unified-top-card__job-title',
         '.jobs-unified-top-card__job-title h1',
-        'h1.t-24',
-        'h1[class*="title"]'
+        'h1.jobs-unified-top-card__job-title',
+        '[data-test-job-detail-title]',
+        'h1.t-24', 'h1.t-21',
+        'h1[class*="job-title"]',
+        'h1[class*="title"]',
+        'h1'
       ]);
 
-      // Company: updated selectors for LinkedIn's 2025 DOM
       company = q([
         '.job-details-jobs-unified-top-card__company-name a',
+        '.job-details-jobs-unified-top-card__company-name',
         '.jobs-unified-top-card__company-name a',
+        '.jobs-unified-top-card__company-name',
         '.jobs-unified-top-card__subtitle-primary-grouping a',
-        'a[href*="/company/"]'
+        '[class*="company-name"] a',
+        '[class*="company-name"]'
       ]);
 
-      // Clean URL: prefer direct job link, fall back to currentJobId
+      if (!company) {
+        var sub = q([
+          '.job-details-jobs-unified-top-card__primary-description-without-tagline',
+          '.jobs-unified-top-card__primary-description',
+          '[class*="primary-description"]',
+          '[class*="top-card"] .t-black--light',
+          '[class*="top-card"] .t-normal'
+        ]);
+        if (sub) company = sub.split(/[·•|]/)[0].trim().split('\n')[0].trim();
+      }
+
+      if (!company) {
+        var h1el = document.querySelector('h1');
+        var node = h1el && h1el.parentElement;
+        for (var lvl = 0; lvl < 6 && node && !company; lvl++, node = node.parentElement) {
+          var cl = node.querySelector('a[href*="/company/"]');
+          if (cl && cl.innerText.trim()) company = cl.innerText.trim().split('\n')[0].trim();
+        }
+      }
+
+      if (!company) {
+        var h1b = document.querySelector('h1');
+        if (h1b) {
+          var h1top = h1b.getBoundingClientRect().top;
+          var links = document.querySelectorAll('a[href*="/company/"]');
+          var best = null, bestDist = Infinity;
+          for (var li = 0; li < links.length; li++) {
+            var r = links[li].getBoundingClientRect();
+            var d = Math.abs(r.top - h1top);
+            if (d < bestDist && links[li].innerText.trim()) { bestDist = d; best = links[li]; }
+          }
+          if (best && bestDist < 400) company = best.innerText.trim().split('\n')[0].trim();
+        }
+      }
+
       var jl = document.querySelector('a[href*="/jobs/view/"]');
       if (jl) { if (!role) role = jl.innerText.trim(); href = jl.href.split('?')[0]; }
       if (href === location.href) {
@@ -60,10 +113,18 @@
         if (m) href = 'https://www.linkedin.com/jobs/view/' + m[1] + '/';
       }
 
-      // Title fallback: "Role at Company | LinkedIn" or "Role hiring at Company | LinkedIn"
       if (!role || !company) {
-        var tm = document.title.match(/^(.+?)\s+(?:hiring\s+)?at\s+(.+?)\s*[|—]/);
+        var cleanTitle = document.title.replace(/^\(\d+\)\s*/, '').replace(/\s*[|]\s*LinkedIn\s*$/i, '').trim();
+        var tm = cleanTitle.match(/^(.+?)\s+(?:hiring\s+)?at\s+(.+)$/i);
         if (tm) { if (!role) role = tm[1].trim(); if (!company) company = tm[2].trim(); }
+        if (!role || !company) {
+          var dparts = cleanTitle.split(/\s*[-–—]\s+/);
+          if (dparts.length >= 2) { if (!role) role = dparts[0].trim(); if (!company) company = dparts[1].trim(); }
+        }
+        if (!role || !company) {
+          var bparts = cleanTitle.split(/\s*[·•]\s*/);
+          if (bparts.length >= 2) { if (!role) role = bparts[0].trim(); if (!company) company = bparts[1].trim(); }
+        }
       }
 
     } else if (h.includes('jobstreet.com')) {
@@ -87,7 +148,6 @@
       company = q(['[class*="company-name"]', '[class*="CompanyName"]', 'a[href*="/company/"]', '[class*="employer"]']);
     }
 
-    // Last resort: parse page title
     if (!role) {
       var pts = document.title.split(' - ');
       role = (pts[0] || document.title).trim();
@@ -112,7 +172,7 @@
 
     var popup = document.createElement('div');
     popup.id = 'jhcc-popup';
-    popup.style.cssText = 'position:fixed;bottom:80px;right:24px;z-index:2147483647;background:#003D5C;border:2px solid #00C8FF;border-radius:12px;padding:8px;display:flex;flex-direction:column;gap:6px;box-shadow:0 8px 24px rgba(0,0,0,0.6);font-family:-apple-system,sans-serif;min-width:200px;';
+    popup.style.cssText = 'position:fixed;bottom:80px;right:24px;z-index:2147483647;background:#003D5C;border:2px solid #00C8FF;border-radius:12px;padding:8px;display:flex;flex-direction:column;gap:6px;box-shadow:0 8px 24px rgba(0,0,0,0.6);font-family:-apple-system,sans-serif;min-width:220px;';
 
     function makeBtn(label, sub) {
       var b = document.createElement('button');
@@ -123,23 +183,26 @@
       return b;
     }
 
-    var qa = makeBtn('⚡ Quick Add', 'Silently save — no tab opens');
-    var ae = makeBtn('✏️ Add & Edit', 'Open JHCC to review');
+    // Debug row
+    var dbg = document.createElement('div');
+    dbg.style.cssText = 'padding:6px 10px 4px;font-size:10px;color:rgba(0,200,255,0.6);border-bottom:1px solid rgba(0,200,255,0.15);line-height:1.5;word-break:break-all;';
+    dbg.innerText = 'Role: ' + (d.role || '(empty)') + '\nCo:   ' + (d.company || '(empty)');
+    popup.appendChild(dbg);
+
+    var qa = makeBtn('⚡ Quick Add', 'Saves silently — tab opens & closes');
+    var ae = makeBtn('✏️ Add & Edit', 'Open JHCC to review & save');
 
     qa.onclick = function () {
       popup.remove();
       var p = new URLSearchParams({ quickAdd: '1', company: d.company, role: d.role, url: d.href, source: d.source });
-      window.open(
-        'http://localhost:5173/quick-add.html?' + p.toString(),
-        '_blank',
-        'width=1,height=1,left=0,top=0,toolbar=no,menubar=no,scrollbars=no,status=no'
-      );
-      showConfirm(d.role || d.company || 'Job');
+      openTab('http://localhost:5173/quick-add.html?' + p.toString());
+      showConfirm(d.role + ' @ ' + d.company);
     };
+
     ae.onclick = function () {
       popup.remove();
       var p = new URLSearchParams({ addJob: '1', company: d.company, role: d.role, url: d.href, source: d.source });
-      window.open('http://localhost:5173/#' + p.toString(), '_blank');
+      openTab('http://localhost:5173/#' + p.toString());
     };
 
     popup.appendChild(qa);
