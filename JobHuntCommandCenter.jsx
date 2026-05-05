@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Columns, List, Zap, Settings,
   ChevronLeft, ChevronRight, Plus, Search, ExternalLink,
   ArrowUp, ArrowDown, ArrowUpDown, ChevronDown, Star,
-  FileText, Pencil, GripVertical, Check, Bell, Sun, Moon
+  FileText, Pencil, GripVertical, Check, Bell, Sun, Moon, RefreshCw
 } from 'lucide-react'
 import {
   PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis,
@@ -1655,6 +1655,149 @@ function SourceBreakdownChart({ jobs }) {
   )
 }
 
+function PipelineSankeyChart({ jobs }) {
+  const [tooltip, setTooltip] = useState(null)
+  const nonSaved = useMemo(() => jobs.filter(j => j.status !== 'saved'), [jobs])
+
+  const SOURCE_COLORS = ['#38BDF8', '#A78BFA', '#FBBF24', '#34D399', '#F97316', '#EC4899', '#94A3B8']
+
+  const layout = useMemo(() => {
+    const activeSources = SOURCES.filter(s => nonSaved.some(j => j.source === s))
+    const activeStatuses = STATUSES.filter(s => s !== 'saved' && nonSaved.some(j => j.status === s))
+    if (!nonSaved.length || !activeSources.length || !activeStatuses.length) return null
+
+    const W = 640, H = 210, PAD_Y = 14, NODE_W = 10, GAP = 6
+    const LEFT_X = 130, RIGHT_X = 500
+    const availH = H - PAD_Y * 2
+
+    // sqrt scaling: reduces dominance of large nodes (e.g. 53 Applied vs 2 Screening)
+    const buildNodes = (items, vals) => {
+      const sqrts = vals.map(v => Math.sqrt(Math.max(v, 0.01)))
+      const sqrtSum = sqrts.reduce((a, b) => a + b, 0)
+      const usable = availH - GAP * (items.length - 1)
+      const scale = usable / sqrtSum
+      const heights = sqrts.map(s => Math.max(s * scale, 6))
+      const totalH = heights.reduce((a, b) => a + b, 0) + GAP * (items.length - 1)
+      let y = PAD_Y + (availH - totalH) / 2
+      return items.map((name, i) => {
+        const node = { name, y, h: heights[i], value: vals[i] }
+        y += heights[i] + GAP
+        return node
+      })
+    }
+
+    const sourceVals = activeSources.map(s => nonSaved.filter(j => j.source === s).length)
+    const statusVals = activeStatuses.map(s => nonSaved.filter(j => j.status === s).length)
+    const sourceNodes = buildNodes(activeSources, sourceVals)
+    const statusNodes = buildNodes(activeStatuses, statusVals)
+
+    // Tapered links: each end height is proportional to its node, so links taper correctly
+    const srcOffset = sourceNodes.map(() => 0)
+    const statOffset = statusNodes.map(() => 0)
+    const links = []
+    activeSources.forEach((src, si) => {
+      activeStatuses.forEach((stat, ti) => {
+        const val = nonSaved.filter(j => j.source === src && j.status === stat).length
+        if (!val) return
+        const sH = Math.max((val / sourceVals[si]) * sourceNodes[si].h, 1.5)
+        const tH = Math.max((val / statusVals[ti]) * statusNodes[ti].h, 1.5)
+        links.push({ src, stat, val,
+          sy: sourceNodes[si].y + srcOffset[si], sH,
+          ty: statusNodes[ti].y + statOffset[ti], tH,
+          si, ti,
+        })
+        srcOffset[si] += sH
+        statOffset[ti] += tH
+      })
+    })
+
+    return { sourceNodes, statusNodes, links, W, H, LEFT_X, RIGHT_X, NODE_W, activeSources }
+  }, [nonSaved])
+
+  if (!layout) return <p style={{ fontSize: '12px', color: C.textGhost, padding: '8px 0' }}>No applications yet.</p>
+
+  const { sourceNodes, statusNodes, links, W, H, LEFT_X, RIGHT_X, NODE_W, activeSources } = layout
+  const x1 = LEFT_X + NODE_W, x2 = RIGHT_X
+  const mx = (x1 + x2) / 2
+
+  return (
+    <div style={{ position: 'relative', width: '100%' }}>
+      <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{ overflow: 'visible', display: 'block' }}>
+        <defs>
+          {links.map((l, i) => {
+            const srcColor = SOURCE_COLORS[activeSources.indexOf(l.src) % SOURCE_COLORS.length]
+            return (
+              <linearGradient key={i} id={`sk_${i}`} x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stopColor={srcColor} stopOpacity="0.5" />
+                <stop offset="100%" stopColor={STATUS_CONFIG[l.stat].color} stopOpacity="0.45" />
+              </linearGradient>
+            )
+          })}
+        </defs>
+
+        {/* Tapered bezier bands */}
+        {links.map((l, i) => (
+          <path
+            key={i}
+            d={`M ${x1},${l.sy} C ${mx},${l.sy} ${mx},${l.ty} ${x2},${l.ty} L ${x2},${l.ty+l.tH} C ${mx},${l.ty+l.tH} ${mx},${l.sy+l.sH} ${x1},${l.sy+l.sH} Z`}
+            fill={`url(#sk_${i})`}
+            opacity={tooltip?.linkIdx === i ? 1 : 0.7}
+            style={{ cursor: 'pointer', transition: 'opacity 0.12s' }}
+            onMouseEnter={e => setTooltip({ linkIdx: i, x: e.clientX, y: e.clientY, text: `${l.src} → ${STATUS_CONFIG[l.stat].label}: ${l.val}` })}
+            onMouseLeave={() => setTooltip(null)}
+          />
+        ))}
+
+        {/* Source nodes + labels */}
+        {sourceNodes.map((n, i) => {
+          const color = SOURCE_COLORS[i % SOURCE_COLORS.length]
+          const mid = n.y + n.h / 2
+          const showFull = n.h >= 18
+          const showMin = n.h >= 9
+          return (
+            <g key={n.name}>
+              <rect x={LEFT_X} y={n.y} width={NODE_W} height={n.h} rx={2} fill={color} />
+              {showFull && <>
+                <text x={LEFT_X - 7} y={mid - 5} textAnchor="end" dominantBaseline="middle" fill={C.textSecondary} fontSize={9.5} fontFamily="DM Sans, sans-serif">{n.name}</text>
+                <text x={LEFT_X - 7} y={mid + 6} textAnchor="end" dominantBaseline="middle" fill={C.textGhost} fontSize={8.5} fontFamily="JetBrains Mono, monospace">{n.value}</text>
+              </>}
+              {!showFull && showMin && (
+                <text x={LEFT_X - 7} y={mid} textAnchor="end" dominantBaseline="middle" fill={C.textSecondary} fontSize={9} fontFamily="DM Sans, sans-serif">{n.name}</text>
+              )}
+            </g>
+          )
+        })}
+
+        {/* Status nodes + labels */}
+        {statusNodes.map((n) => {
+          const color = STATUS_CONFIG[n.name].color
+          const mid = n.y + n.h / 2
+          const showFull = n.h >= 18
+          const showMin = n.h >= 9
+          return (
+            <g key={n.name}>
+              <rect x={RIGHT_X} y={n.y} width={NODE_W} height={n.h} rx={2} fill={color} />
+              {showFull && <>
+                <text x={RIGHT_X + NODE_W + 7} y={mid - 5} textAnchor="start" dominantBaseline="middle" fill={color} fontSize={9.5} fontWeight={600} fontFamily="DM Sans, sans-serif">{STATUS_CONFIG[n.name].label}</text>
+                <text x={RIGHT_X + NODE_W + 7} y={mid + 6} textAnchor="start" dominantBaseline="middle" fill={C.textGhost} fontSize={8.5} fontFamily="JetBrains Mono, monospace">{n.value}</text>
+              </>}
+              {!showFull && showMin && (
+                <text x={RIGHT_X + NODE_W + 7} y={mid} textAnchor="start" dominantBaseline="middle" fill={color} fontSize={9} fontFamily="DM Sans, sans-serif">{STATUS_CONFIG[n.name].label} {n.value}</text>
+              )}
+            </g>
+          )
+        })}
+      </svg>
+
+      {tooltip && (
+        <div style={{ position: 'fixed', left: tooltip.x + 12, top: tooltip.y - 12, background: C.bgElevated, border: `1px solid ${C.border}`, borderRadius: '6px', padding: '5px 9px', fontSize: '11px', color: C.textPrimary, pointerEvents: 'none', zIndex: 9999, whiteSpace: 'nowrap' }}>
+          {tooltip.text}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // DASHBOARD LISTS
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1726,7 +1869,7 @@ function FollowUpList({ jobs, onMarkFollowedUp }) {
 // DASHBOARD VIEW (full — replaces placeholder)
 // ─────────────────────────────────────────────────────────────────────────────
 
-function DashboardView({ jobs, settings, setView, setTableFilters, updateJob, onAddClick, onEmailImport }) {
+function DashboardView({ jobs, settings, setView, setTableFilters, updateJob, onAddClick, onEmailImport, onEmailSync }) {
   const [showReport, setShowReport] = useState(false)
   const weeklyGoal = settings.weeklyGoal || 15
 
@@ -1820,6 +1963,7 @@ function DashboardView({ jobs, settings, setView, setTableFilters, updateJob, on
         </div>
         <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
           <button title="Import from Email / Paste" onClick={onEmailImport} style={iconBtn}><ArrowUp size={14} /></button>
+          <button title="Email Status Sync" onClick={onEmailSync} style={iconBtn}><RefreshCw size={14} /></button>
           <button title="Weekly Report" onClick={() => setShowReport(true)} style={iconBtn}><FileText size={14} /></button>
           <button title="Export JSON" onClick={handleExport} style={iconBtn}><ArrowDown size={14} /></button>
           <button onClick={() => onAddClick('saved')} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', background: C.cyanDim, color: C.cyan, border: `1px solid ${C.cyan}33`, borderRadius: '7px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', marginLeft: '4px' }}>
@@ -1892,8 +2036,15 @@ function DashboardView({ jobs, settings, setView, setTableFilters, updateJob, on
             </div>
           </div>
 
-          {/* ── Activity Heatmap ── */}
-          <div style={{ marginBottom: '28px' }}>
+          {/* ── Application Flow + Activity Heatmap ── */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '28px' }}>
+            <div style={{ background: C.bgSurface, border: `1px solid ${C.border}`, borderRadius: '10px', padding: '14px 18px 10px', boxShadow: C.shadow }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '10px' }}>
+                <p style={{ fontSize: '10px', color: C.textGhost, textTransform: 'uppercase', letterSpacing: '0.07em', fontWeight: 700 }}>Application Flow</p>
+                <p style={{ fontSize: '10px', color: C.textGhost }}>source → outcome</p>
+              </div>
+              <PipelineSankeyChart jobs={jobs} />
+            </div>
             <ActivityHeatmap jobs={jobs} />
           </div>
 

@@ -10,7 +10,7 @@ A single-file React `.jsx` artifact app — a personal job hunt dashboard with A
 
 **This is ONE file. NEVER split into multiple files.**
 NEVER create additional `.jsx`, `.js`, `.ts`, or `.css` files.
-All 3000 lines of code live in a single artifact file.
+All code lives in a single artifact file — no line limit.
 
 ---
 
@@ -54,7 +54,6 @@ const res = await fetch("https://api.anthropic.com/v1/messages", {
 
 ### Other hard rules
 - **No `<form>` tags** — use `onClick`/`onChange` handlers only
-- Under 3000 lines total
 
 ---
 
